@@ -1,0 +1,40 @@
+name: Dependency Review
+
+###
+# This workflow analyzes dependencies introduced by pull requests to help identify security vulnerabilities
+# and for invalid dependency licenses.
+#
+# To override the default configuration preset, set the `DEPENDENCY_REVIEW_CONFIG_PRESET` variable in the repository settings.
+# The default preset is "license-deny-vulnerability-high". This preset has this behavior:
+#
+#   Fail if a dependency is found with a license that is in the deny_licenses list and fails if vulnerabilities are found in the
+#   dependency tree with specified severity or greater.
+#
+# To set the DEPENDENCY_REVIEW_CONFIG_PRESET repo variable using the gh cli, see:
+#   gh variable set DEPENDENCY_REVIEW_CONFIG_PRESET --body "license-deny-vulnerability-high"
+###
+
+on:
+  merge_group:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  dependency-review:
+    name: Review Dependencies
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    # Skip on merge group events
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Dependency Review
+        uses: smartcontractkit/.github/actions/dependency-review@dependency-review/v2
+        with:
+          config-preset: ${{ vars.DEPENDENCY_REVIEW_CONFIG_PRESET || 'license-deny-vulnerability-high' }}
