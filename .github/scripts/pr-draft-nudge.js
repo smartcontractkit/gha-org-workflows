@@ -13,15 +13,19 @@ module.exports = async ({ github, context, core }) => {
     }
 
     // We only want to comment on PRs that are opened ready for review with reviewers.
-    if (
-      context.payload.action !== "opened" ||
-      pr.draft ||
-      !pr.requested_reviewers ||
-      pr.requested_reviewers.length === 0
-    ) {
-      core.info(
-        'PR is a draft, has no reviewers, or this is not an "opened" event. Skipping.'
-      );
+    const hasIndividualReviewers = pr.requested_reviewers && pr.requested_reviewers.length > 0;
+    const hasTeamReviewers = pr.requested_teams && pr.requested_teams.length > 0;
+
+    // Debug reviewer information
+    core.debug(`PR requested_reviewers: ${JSON.stringify(pr.requested_reviewers || [])}`);
+    core.debug(`PR requested_teams: ${JSON.stringify(pr.requested_teams || [])}`);
+    core.debug(`Has individual reviewers: ${hasIndividualReviewers}`);
+    core.debug(`Has team reviewers: ${hasTeamReviewers}`);
+    core.debug(`PR action: ${context.payload.action}`);
+    core.debug(`PR is draft: ${pr.draft}`);
+
+    if (context.payload.action !== "opened" || pr.draft || (!hasIndividualReviewers && !hasTeamReviewers)) {
+      core.info('PR is a draft, has no reviewers (individual or team), or this is not an "opened" event. Skipping.');
       return;
     }
 
@@ -36,9 +40,7 @@ module.exports = async ({ github, context, core }) => {
       issue_number: pr.number,
     });
 
-    const existingComment = comments.find((comment) =>
-      comment.body.includes(commentIdentifier)
-    );
+    const existingComment = comments.find((comment) => comment.body.includes(commentIdentifier));
 
     if (existingComment) {
       core.info("A PR draft nudge comment already exists on this PR.");
