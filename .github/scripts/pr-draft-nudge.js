@@ -16,6 +16,14 @@ module.exports = async ({ github, context, core }) => {
     const hasIndividualReviewers = pr.requested_reviewers && pr.requested_reviewers.length > 0;
     const hasTeamReviewers = pr.requested_teams && pr.requested_teams.length > 0;
 
+    // Debug reviewer information
+    core.debug(`PR requested_reviewers: ${JSON.stringify(pr.requested_reviewers || [])}`);
+    core.debug(`PR requested_teams: ${JSON.stringify(pr.requested_teams || [])}`);
+    core.debug(`Has individual reviewers: ${hasIndividualReviewers}`);
+    core.debug(`Has team reviewers: ${hasTeamReviewers}`);
+    core.debug(`PR action: ${context.payload.action}`);
+    core.debug(`PR is draft: ${pr.draft}`);
+
     if (context.payload.action !== "opened" || pr.draft || (!hasIndividualReviewers && !hasTeamReviewers)) {
       core.info('PR is a draft, has no reviewers (individual or team), or this is not an "opened" event. Skipping.');
       return;
