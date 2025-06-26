@@ -24,17 +24,6 @@ module.exports = async ({ github, context, core }) => {
     core.debug(`PR action: ${context.payload.action}`);
     core.debug(`PR is draft: ${pr.draft}`);
 
-    // Debug the full PR object to see what's available
-    core.debug(`Full PR object keys: ${JSON.stringify(Object.keys(pr))}`);
-
-    // Check if reviewers are in a different field
-    if (pr.assignees) {
-      core.debug(`PR assignees: ${JSON.stringify(pr.assignees)}`);
-    }
-    if (pr.reviewers) {
-      core.debug(`PR reviewers field: ${JSON.stringify(pr.reviewers)}`);
-    }
-
     if (context.payload.action !== "opened" || pr.draft || (!hasIndividualReviewers && !hasTeamReviewers)) {
       core.info('PR is a draft, has no reviewers (individual or team), or this is not an "opened" event. Skipping.');
       return;
