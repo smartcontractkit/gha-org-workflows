@@ -33,6 +33,8 @@ jobs:
           repository: smartcontractkit/${{ env.PATH_TO_REPO_SELF}}
           path: ${{ env.PATH_TO_REPO_SELF}}
           persist-credentials: false
+          # TODO: remove
+          ref: dx-1203/do-not-merge-2
 
       - name: Run
         uses: actions/github-script@v7
