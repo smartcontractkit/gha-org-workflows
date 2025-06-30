@@ -12,6 +12,12 @@ module.exports = async ({ github, context, core }) => {
       return;
     }
 
+    // Skip commenting if the PR creator is a bot
+    if (pr.user.type === "Bot" || pr.user.login.endsWith("[bot]")) {
+      core.info(`Skipping PR draft nudge for bot user: ${pr.user.login}`);
+      return;
+    }
+
     // We only want to comment on PRs that are opened ready for review with reviewers.
     const hasIndividualReviewers = pr.requested_reviewers && pr.requested_reviewers.length > 0;
     const hasTeamReviewers = pr.requested_teams && pr.requested_teams.length > 0;
