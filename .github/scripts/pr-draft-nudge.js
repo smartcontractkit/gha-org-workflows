@@ -37,7 +37,7 @@ module.exports = async ({ github, context, core }) => {
 
     const prCreator = pr.user.login;
     const commentIdentifier = "<!-- pr-draft-nudge-comment -->";
-    const commentBody = `:wave: @${prCreator}, thanks for creating this pull request!\n\nTo help reviewers, please consider creating future PRs as drafts first. This allows you to self-review and make any final changes before notifying the team.\n\nOnce you're ready, you can mark it as "Ready for review" to request feedback. Thanks!\n\n${commentIdentifier}`;
+    const commentBody = `:wave: ${prCreator}, thanks for creating this pull request!\n\nTo help reviewers, please consider creating future PRs as drafts first. This allows you to self-review and make any final changes before notifying the team.\n\nOnce you're ready, you can mark it as "Ready for review" to request feedback. Thanks!\n\n${commentIdentifier}`;
 
     // Check if a comment with the identifier already exists
     const { data: comments } = await github.rest.issues.listComments({
