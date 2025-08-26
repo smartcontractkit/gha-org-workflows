@@ -1,0 +1,80 @@
+name: "CodeOwners Enforcement"
+
+on:
+  pull_request:
+
+jobs:
+  enforce-codeowners:
+    name: "Enforce"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      COMMENT_FINGERPRINT: '<!-- chainlink-codeowners-enforcement -->'
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check for CODEOWNERS file
+        id: codeowners-file
+        run: |
+          # check at ./CODEOWNERS and .github/CODEOWNERS
+          if [ ! -f CODEOWNERS ] && [ ! -f .github/CODEOWNERS ]; then
+            echo "CODEOWNERS file not found"
+            echo "found=false" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "found=true" | tee -a "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find PR Comment
+        id: find-comment
+        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
+        with:
+          issue-number: ${{ github.event.number }}
+          body-includes: ${{ env.COMMENT_FINGERPRINT }}
+
+      - name: Upsert comment if no CODEOWNERS exists
+        if: ${{ steps.codeowners-file.outputs.found == 'false' }}
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: 'replace'
+          body: |
+            ### No CODEOWNERS file detected - @${{ github.actor }}
+
+            This repository doesn't contain a CODEOWNERS file. Please add one at one of the following paths:
+            1. `CODEOWNERS` (root of repository)
+            2. `.github/CODEOWNERS`
+
+            If this repository is owned/used by a single team the default entry for a CODEOWNERS would be:
+
+            ```
+            * @smartcontractkit/<your team>
+            ```
+
+            For more information see: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+            ${{ env.COMMENT_FINGERPRINT }}
+
+      - name: Update comment if CODEOWNERS was added
+        if: ${{ steps.codeowners-file.outputs.found == 'true' && steps.find-comment.outputs.comment-id != '' }}
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        with:
+          issue-number: ${{ github.event.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: 'replace'
+          body: |
+            Thank you for adding a CODEOWNERS file - @${{ github.actor }}.
+
+            ${{ env.COMMENT_FINGERPRINT }}
+
+      - name: Fail if no CODEOWNERS file is found
+        if: ${{ steps.codeowners-file.outputs.found == 'false' }}
+        run: |
+          echo "::error::No CODEOWNERS file found."
+          exit 1

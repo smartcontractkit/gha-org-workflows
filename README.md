@@ -23,6 +23,9 @@ Uses [`gha-workflow-validator`](https://github.com/smartcontractkit/.github/tree
 Uses [patrickhuie19/codeowners-validator](https://github.com/patrickhuie19/codeowners-validator/) action.
 * Validates the contents of a CODEOWNERS file when it is modified. Enforces certain criteria to ensure healthy CODEOWNERS.
 
+### CODEOWNERS Enforcement
+
+Enforces that every repository has a CODEOWNERS file.
 
 ## Help
 
