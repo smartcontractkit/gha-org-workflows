@@ -25,9 +25,9 @@ jobs:
           # check at ./CODEOWNERS and .github/CODEOWNERS
           if [ ! -f CODEOWNERS ] && [ ! -f .github/CODEOWNERS ]; then
             echo "CODEOWNERS file not found"
-            echo "found=true" | tee -a "$GITHUB_OUTPUT"
-          else
             echo "found=false" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "found=true" | tee -a "$GITHUB_OUTPUT"
           fi
 
       - name: Find PR Comment
