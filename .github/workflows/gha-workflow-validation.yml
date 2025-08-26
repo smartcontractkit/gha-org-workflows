@@ -21,6 +21,6 @@ jobs:
           persist-credentials: false
 
       - name: Run gha-workflow-validator action
-        uses: smartcontractkit/.github/actions/gha-workflow-validator@gha-workflow-validator/0.5.2
+        uses: smartcontractkit/.github/actions/gha-workflow-validator@gha-workflow-validator/0.5.3
         env:
           GITHUB_TOKEN: ${{ github.token }}
