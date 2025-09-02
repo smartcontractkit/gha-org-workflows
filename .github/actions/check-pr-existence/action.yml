@@ -1,0 +1,40 @@
+name: "Check PR Existence"
+description: "Checks if any pull requests exist in the repository"
+inputs:
+  github-token:
+    description: "GitHub token for API access"
+    required: false
+    default: ${{ github.token }}
+outputs:
+  has-prs:
+    description: "Whether any pull requests have ever been created in the repository (true/false)"
+    value: ${{ steps.check-prs.outputs.has-prs }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check for existing PRs
+      id: check-prs
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        echo "Checking if any pull requests have ever been created in the repository..."
+
+        # Query GitHub API for all PRs (open, closed, merged) - limit to 1 for efficiency
+        pr_count=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=all&per_page=1" \
+          --jq 'length' \
+          2>/dev/null || echo "0")
+
+        echo "API returned $pr_count pull request(s) in first page"
+
+        # If we get any results, PRs exist
+        if [[ "$pr_count" -gt 0 ]]; then
+          has_prs="true"
+          echo "✅ PRs have been created in this repository."
+        else
+          has_prs="false"
+          echo "⚠️  No PRs found - likely a new repository."
+        fi
+
+        # Set outputs
+        echo "has-prs=$has_prs" | tee -a $GITHUB_OUTPUT
