@@ -1,0 +1,20 @@
+name: "CodeOwners Review Analysis"
+
+on:
+  pull_request:
+    types: [labeled, unlabeled]
+
+jobs:
+  analyze-reviews:
+    name: "Enforce"
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - name: CODEOWNERS Review Analysis
+        if: contains(github.event.pull_request.labels.*.name, 'analyze-reviews')
+        uses: smartcontractkit/.github/actions/codeowners-review-analysis@feat/codeowners-analysis
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
