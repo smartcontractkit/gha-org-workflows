@@ -5,15 +5,21 @@ on:
 
 jobs:
   analyze-reviews:
-    name: "Enforce"
+    name: "analyze"
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       pull-requests: write
     steps:
+      - name: Comment Label
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'analyze-reviews') }}
+        run: |
+          echo "Label 'analyze-reviews' not found on PR. Skipping analysis."
+          echo "Add label 'analyze-reviews', and push a new commit enable analysis."
+
       - name: CODEOWNERS Review Analysis
-        if: contains(github.event.pull_request.labels.*.name, 'analyze-reviews')
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'analyze-reviews') }}
         uses: smartcontractkit/.github/actions/codeowners-review-analysis@feat/codeowners-analysis
         env:
           GITHUB_TOKEN: ${{ github.token }}
