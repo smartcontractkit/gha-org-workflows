@@ -2,9 +2,11 @@ name: "CodeOwners Enforcement"
 
 on:
   pull_request:
+  merge_group:
 
 jobs:
   enforce-codeowners:
+    if: ${{ github.event_name == 'pull_request' }}
     name: "Enforce"
     runs-on: ubuntu-latest
     permissions:
@@ -16,4 +18,3 @@ jobs:
         uses: smartcontractkit/.github/actions/codeowners-sanity-check@codeowners-sanity-check/v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
