@@ -2,12 +2,14 @@ name: "CodeOwners Validation"
 
 on:
   pull_request:
+  merge_group:
 
 jobs:
   # This job is necessary because the org-wide rulesets don't support event-based path filtering.
   # (https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#running-your-pull_request-workflow-based-on-files-changed-in-a-pull-request)
   # We include this job to filter the paths manually.
   filter-changes:
+    if: ${{ github.event_name == 'pull_request' }}
     name: Filter changes
     runs-on: ubuntu-latest
     permissions:
@@ -31,7 +33,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: ${{ needs.filter-changes.outputs.codeowners == 'true' }}
+    if: ${{ github.event_name == 'pull_request' && needs.filter-changes.outputs.codeowners == 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:

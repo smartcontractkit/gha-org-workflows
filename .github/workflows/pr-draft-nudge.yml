@@ -12,6 +12,7 @@ name: PR Draft Nudge
 on:
   pull_request:
     types: [opened]
+  merge_group:
 
 permissions: {}
 
@@ -20,6 +21,7 @@ env:
 
 jobs:
   pr-draft-nudge:
+    if: ${{ github.event_name == 'pull_request' }}
     name: PR Draft Nudge
     runs-on: ubuntu-latest
     timeout-minutes: 10
