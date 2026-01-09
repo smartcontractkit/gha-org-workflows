@@ -15,3 +15,6 @@ jobs:
 
       - name: Validate go.mod
         uses: smartcontractkit/.github/apps/go-mod-validator@go-mod-validator/v1
+        with:
+          repo-branch-exceptions: |
+            smartcontractkit/chainlink-ccip:develop
