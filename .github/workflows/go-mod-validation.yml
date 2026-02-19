@@ -18,3 +18,4 @@ jobs:
         with:
           repo-branch-exceptions: |
             smartcontractkit/chainlink-ccip:develop
+            smartcontractkit/chainlink-sui:2.31.0-cherry-picked
