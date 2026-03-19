@@ -1,1 +1,2 @@
 * @smartcontractkit/devex-cicd
+.github/workflows/sigscanner-check.yml @smartcontractkit/prodsec-public
