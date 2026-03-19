@@ -11,7 +11,7 @@ jobs:
     # Skip on merge group events
     if: ${{ github.event_name == 'pull_request' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Validate go.mod
         uses: smartcontractkit/.github/apps/go-mod-validator@go-mod-validator/v1

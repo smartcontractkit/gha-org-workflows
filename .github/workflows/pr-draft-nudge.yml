@@ -30,7 +30,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout org workflows
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: smartcontractkit/${{ env.PATH_TO_REPO_SELF}}
           path: ${{ env.PATH_TO_REPO_SELF}}

@@ -15,12 +15,15 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
 
       - name: Run gha-workflow-validator action
-        uses: smartcontractkit/.github/actions/gha-workflow-validator@gha-workflow-validator/0.5.3
+        uses: smartcontractkit/.github/actions/gha-workflow-validator@gha-workflow-validator/v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        with:
+          # No longer needed - previously used when versions of actions/cache were being deprecated
+          validate-actions-cache-version: "false"
