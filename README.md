@@ -27,6 +27,10 @@ Uses [patrickhuie19/codeowners-validator](https://github.com/patrickhuie19/codeo
 
 Enforces that every repository has a CODEOWNERS file.
 
+### Sigscanner check
+
+Enforces that commits are signed by allowlisted keys.
+
 ## Help
 
 If you are experiencing a blocking error from a workflow in this repository, please reach out to us on `#team-devex`.
