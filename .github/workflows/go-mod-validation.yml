@@ -19,3 +19,7 @@ jobs:
           repo-branch-exceptions: |
             smartcontractkit/chainlink-ccip:develop
             smartcontractkit/chainlink-sui:2.31.0-cherry-picked
+            smartcontractkit/chainlink-protos:capabilities-development
+            smartcontractkit/cre-sdk-go:capabilities-development
+            smartcontractkit/cre-sdk-typescript:capabilities-development
+
