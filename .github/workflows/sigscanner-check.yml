@@ -22,8 +22,6 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       VERIFY_MAX_ATTEMPTS: "3"
-      # If the PR has more than this many commits, abort
-      VERIFY_MAX_COMMITS: "512"
     steps:
       - name: "Fetch PR commits"
         id: fetch-commits
@@ -45,11 +43,6 @@ jobs:
 
           if [[ $commit_count -eq 0 ]]; then
             echo "❌ Unexpected: no commits to verify"
-            exit 1
-          fi
-
-          if [[ $commit_count -gt $VERIFY_MAX_COMMITS ]]; then
-            echo "❌ Too many commits: $commit_count (max $VERIFY_MAX_COMMITS)"
             exit 1
           fi
 
