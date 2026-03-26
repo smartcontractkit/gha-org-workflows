@@ -28,10 +28,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Clean up
-          rm -f /tmp/commits_with_committer.csv /tmp/verified_commits.csv /tmp/failed_commits.csv \
-            /tmp/pending_commits.csv
-
           # Fetch all commit hashes and their corresponding committers in this PR
           gh api "repos/$REPOSITORY/pulls/$PR_NUMBER/commits" --paginate \
             --jq '.[] | [.sha, (.committer.login // "")] | join(",")' \
@@ -54,7 +50,7 @@ jobs:
           SIGSCANNER_API_KEY: ${{ secrets.SIGSCANNER_API_KEY }}
           COMMIT_COUNT: ${{ steps.fetch-commits.outputs.commit-count }}
         run: |
-          touch /tmp/verified_commits.csv /tmp/failed_commits.csv
+          > /tmp/verified_commits.csv
 
           echo "🔎 Verifying $COMMIT_COUNT commits"
 
@@ -96,7 +92,6 @@ jobs:
               echo "$commit_sha,$committer_username" >> /tmp/verified_commits.csv
             else
               echo "❌ $commit_sha"
-              echo "$commit_sha,$committer_username" >> /tmp/failed_commits.csv
             fi
           done < /tmp/commits_with_committer.csv
 
@@ -120,11 +115,11 @@ jobs:
         run: |
           touch /tmp/verified_commits.csv
 
-          # Extract commits failed to verify earlier
-          comm -23 \
-            <(sort /tmp/commits_with_committer.csv) \
-            <(sort /tmp/verified_commits.csv) \
+          # Extract commits failed to verify earlier by comparing the verified commits file
+          # with the full list of commits
+          grep -vxFf /tmp/verified_commits.csv /tmp/commits_with_committer.csv \
             > /tmp/pending_commits.csv
+
           pending_commit_count=$(wc -l < /tmp/pending_commits.csv | tr -d ' ')
 
           if [[ $pending_commit_count -eq 0 ]]; then
