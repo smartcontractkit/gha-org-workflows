@@ -57,7 +57,6 @@ jobs:
           # Loop through all the commits
           # For each commit, query Sigscanner with retry to check if it's verified
           # Verified commit hashes with committer username are saved to /tmp/verified_commits.csv
-          # Failed-to-verify commit hashes with committer username are saved to /tmp/failed_commits.csv
           while IFS=, read -r commit_sha committer_username; do
             [[ -z "$commit_sha" ]] && continue
 
