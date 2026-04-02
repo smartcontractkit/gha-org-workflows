@@ -24,7 +24,6 @@ jobs:
     steps:
       - name: "Sigscanner check"
         id: sigscanner
-        continue-on-error: true
         env:
           SIGSCANNER_URL: ${{ secrets.SIGSCANNER_URL }}
           SIGSCANNER_API_KEY: ${{ secrets.SIGSCANNER_API_KEY }}
