@@ -49,6 +49,18 @@ jobs:
 
             if [[ "$http_code" != "200" ]]; then
               echo "❌ Sigscanner API returned HTTP $http_code (attempt $request_attempt, ${elapsed}s)"
+              echo "If this PR has many commits, Sigscanner might time out. Try running the workflow again. Sigscanner will pick up from the last verified commit."
+              if [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]]; then
+                echo "⏳ Retrying in 15s..."
+                sleep 15
+              fi
+              request_attempt=$((request_attempt + 1))
+              continue
+            fi
+
+            if ! echo "$response" | jq empty >/dev/null 2>&1; then
+              echo "❌ HTTP 200 but body is not valid JSON (attempt $request_attempt, ${elapsed}s)"
+              echo
               if [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]]; then
                 echo "⏳ Retrying in 15s..."
                 sleep 15
@@ -58,7 +70,6 @@ jobs:
             fi
 
             res_verified=$(echo "$response" | jq -r '.verified')
-
             res_error=$(echo "$response" | jq -r '.error')
 
             if [[ "$res_verified" == "true" ]]; then
