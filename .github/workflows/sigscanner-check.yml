@@ -20,6 +20,7 @@ jobs:
     env:
       REPOSITORY: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
       VERIFY_MAX_ATTEMPTS: "3"
     steps:
       - name: "Sigscanner check"
@@ -28,16 +29,36 @@ jobs:
           SIGSCANNER_URL: ${{ secrets.SIGSCANNER_URL }}
           SIGSCANNER_API_KEY: ${{ secrets.SIGSCANNER_API_KEY }}
         run: |
+          echo "Verifying $PR_COMMIT_COUNT commits..."
           request_attempt=1
+          total_start=$SECONDS
           while [[ $request_attempt -le $VERIFY_MAX_ATTEMPTS ]]; do
-            response=$(curl -s --max-time 300 -G \
+            echo "::group::Attempt $request_attempt/$VERIFY_MAX_ATTEMPTS — calling Sigscanner API..."
+            attempt_start=$SECONDS
+
+            http_code=$(curl -s -o /tmp/sigscanner_response --max-time 300 -w '%{http_code}' -G \
               -H "X-SIGSCANNER-SECRET: $SIGSCANNER_API_KEY" \
               --data-urlencode "pr=$PR_NUMBER" \
               --data-urlencode "repository=$REPOSITORY" \
               "$SIGSCANNER_URL")
+            response=$(cat /tmp/sigscanner_response)
+
+            elapsed=$(( SECONDS - attempt_start ))
+            echo "API responded in ${elapsed}s (HTTP $http_code)"
+            echo "::endgroup::"
+
+            if [[ "$http_code" != "200" ]]; then
+              echo "❌ Sigscanner API returned HTTP $http_code (attempt $request_attempt, ${elapsed}s)"
+              if [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]]; then
+                echo "⏳ Retrying in 15s..."
+                sleep 15
+              fi
+              request_attempt=$((request_attempt + 1))
+              continue
+            fi
 
             res_verified=$(echo "$response" | jq -r '.verified')
-            res_unverified_commits=$(echo "$response" | jq '.unverified_commits')
+
             res_error=$(echo "$response" | jq -r '.error')
 
             if [[ "$res_verified" == "true" ]]; then
@@ -46,15 +67,19 @@ jobs:
             elif [[ "$(echo "$response" | jq '(.unverified_commits // []) | length > 0')" == "true" ]]; then
               # Non-empty unverified_commits: definitive result, do not retry
               echo "❌ Unverified commits:"
-              echo "$res_unverified_commits"
+              echo "$response" | jq -r '.unverified_commits[] | "  - \(.)"'
               break
             else
               echo "❌ Error: $res_error"
             fi
 
-            [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]] && sleep 15
+            if [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]]; then
+              echo "⏳ Retrying in 15s..."
+              sleep 15
+            fi
             request_attempt=$((request_attempt + 1))
           done
 
-          echo "❌ Not all commits verified"
+          total_elapsed=$(( SECONDS - total_start ))
+          echo "❌ Not all commits verified (total time: ${total_elapsed}s)"
           exit 1
