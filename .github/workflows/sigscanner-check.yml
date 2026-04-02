@@ -1,70 +1,190 @@
-name: "SigScanner Check"
+name: "Sigscanner Check"
+description: "This check ensures all commits in a PR have verified signatures"
 
 on:
   merge_group:
   pull_request:
 
-permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: read
 
 jobs:
   sigscanner-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Skip on merge group events
     if: ${{ github.event_name == 'pull_request' }}
+    env:
+      REPOSITORY: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      VERIFY_MAX_ATTEMPTS: "3"
     steps:
-      - name: "SigScanner checking ${{ github.sha }} by ${{ github.actor }}"
+      - name: "Fetch PR commits"
+        id: fetch-commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Fetch all commit hashes and their corresponding committers in this PR
+          gh api "repos/$REPOSITORY/pulls/$PR_NUMBER/commits" --paginate \
+            --jq '.[] | [.sha, (.committer.login // "")] | join(",")' \
+            > /tmp/commits_with_committer.csv
+
+          commit_count=$(wc -l < /tmp/commits_with_committer.csv | tr -d ' ')
+          echo "Found $commit_count commits in PR #$PR_NUMBER"
+          echo "commit-count=$commit_count" >> "$GITHUB_OUTPUT"
+
+          if [[ $commit_count -eq 0 ]]; then
+            echo "❌ Unexpected: no commits to verify"
+            exit 1
+          fi
+
+      - name: "Sigscanner check"
+        id: sigscanner
+        continue-on-error: true
+        env:
+          SIGSCANNER_URL: ${{ secrets.SIGSCANNER_URL }}
+          SIGSCANNER_API_KEY: ${{ secrets.SIGSCANNER_API_KEY }}
+          COMMIT_COUNT: ${{ steps.fetch-commits.outputs.commit-count }}
+        run: |
+          > /tmp/verified_commits.csv
+
+          echo "🔎 Verifying $COMMIT_COUNT commits"
+
+          # Loop through all the commits
+          # For each commit, query Sigscanner with retry to check if it's verified
+          # Verified commit hashes with committer username are saved to /tmp/verified_commits.csv
+          while IFS=, read -r commit_sha committer_username; do
+            [[ -z "$commit_sha" ]] && continue
+
+            commit_is_verified=false
+            request_attempt=1
+
+            while [[ $request_attempt -le $VERIFY_MAX_ATTEMPTS ]]; do
+              response=$(curl -s --max-time 20 -G \
+                -H "X-SIGSCANNER-SECRET: $SIGSCANNER_API_KEY" \
+                --data-urlencode "commit=$commit_sha" \
+                --data-urlencode "repository=$REPOSITORY" \
+                --data-urlencode "author=$committer_username" \
+                "$SIGSCANNER_URL")
+
+              res_verified=$(echo "$response" | jq -r '.verified')
+              res_error=$(echo "$response" | jq -r '.error')
+
+              if [[ "$res_verified" == "true" ]]; then
+                commit_is_verified=true
+                break
+              elif [[ "$res_error" == "null" || "$res_error" == "" ]]; then
+                # This means the commit is explicitly unverified and shouldn't be retried
+                break
+              fi
+
+              [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]] && sleep 15
+              request_attempt=$((request_attempt + 1))
+            done
+
+            if [[ "$commit_is_verified" == "true" ]]; then
+              echo "✅ $commit_sha"
+              echo "$commit_sha,$committer_username" >> /tmp/verified_commits.csv
+            else
+              echo "❌ $commit_sha"
+            fi
+          done < /tmp/commits_with_committer.csv
+
+          verified_commit_count=$(wc -l < /tmp/verified_commits.csv | tr -d ' ')
+          echo "Verified: $verified_commit_count / $COMMIT_COUNT"
+
+          if [[ $verified_commit_count -eq $COMMIT_COUNT ]]; then
+            echo "✅ All commits verified"
+            exit 0
+          fi
+
+          echo "❌ Not all commits verified"
+          exit 1
+
+      - name: "Sigscanner fallback check"
+        if: ${{ steps.sigscanner.outcome == 'failure' }}
         env:
           API_TOKEN: ${{ secrets.SIGSCANNER_API_TOKEN }}
           API_URL: ${{ secrets.SIGSCANNER_API_URL }}
-          COMMIT_SHA: ${{ github.sha }}
-          ACTOR: ${{ github.actor }}
-          REPOSITORY: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-
+          COMMIT_COUNT: ${{ steps.fetch-commits.outputs.commit-count }}
         run: |
-          echo "🔎 Checking commit $COMMIT_SHA by $ACTOR in $REPOSITORY - $EVENT_NAME"
+          touch /tmp/verified_commits.csv
 
-          payload=$(printf '{"commit":"%s","repository":"%s","author":"%s"}' \
-            "$COMMIT_SHA" "$REPOSITORY" "$ACTOR")
+          # Extract commits failed to verify earlier by comparing the verified commits file
+          # with the full list of commits
+          grep -vxFf /tmp/verified_commits.csv /tmp/commits_with_committer.csv \
+            > /tmp/pending_commits.csv
 
-          max_attempts=3
-          attempt=1
+          pending_commit_count=$(wc -l < /tmp/pending_commits.csv | tr -d ' ')
 
-          # Retry on 5XXs
-          while [[ $attempt -le $max_attempts ]]; do
-            echo "Attempt $attempt/$max_attempts"
+          if [[ $pending_commit_count -eq 0 ]]; then
+            echo "✅ All commits verified"
+            exit 0
+          fi
 
-            CODE=$(curl \
-              --silent \
-              --output /dev/null \
-              --write-out '%{http_code}' \
-              --max-time 20 \
-              -X POST \
-              -H "Content-Type: application/json" \
-              -H "Authorization: $API_TOKEN" \
-              --url "$API_URL" \
-              --data "$payload")
+          echo "🔎 Fallback: verifying $pending_commit_count remaining commits"
 
-            echo "Received $CODE"
-            if [[ "$CODE" == "200" ]]; then
-              echo "✅ Commit is verified"
-              exit 0
-            elif [[ "$CODE" == "400" ]]; then
-              echo "❌ Bad request"
-              exit 1
-            elif [[ "$CODE" == "403" ]]; then
-              echo "❌ Commit is NOT verified"
-              exit 1
-            elif [[ "$CODE" =~ ^5[0-9][0-9]$ ]]; then
-              if [[ $attempt -lt $max_attempts ]]; then
-                echo "Retrying in 15s..."
-                sleep 15
-              fi
+          # Loop through all the commits again with retry with the fallback API
+          while IFS=, read -r commit_sha committer_username; do
+            [[ -z "$commit_sha" ]] && continue
+
+            commit_is_verified=false
+            request_attempt=1
+
+            while [[ $request_attempt -le $VERIFY_MAX_ATTEMPTS ]]; do
+              body=$(jq -n \
+                --arg commit "$commit_sha" \
+                --arg repository "$REPOSITORY" \
+                --arg author "$committer_username" \
+                '{commit: $commit, repository: $repository, author: $author}')
+
+              http_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                --max-time 20 -X POST \
+                -H "Content-Type: application/json" \
+                -H "Authorization: $API_TOKEN" \
+                --url "$API_URL" \
+                --data "$body")
+
+              case $http_status in
+                200)
+                  commit_is_verified=true
+                  break
+                  ;;
+                400)
+                  echo "❌ $commit_sha - Bad request"
+                  break
+                  ;;
+                403) break ;;
+                5??)
+                  [[ $request_attempt -lt $VERIFY_MAX_ATTEMPTS ]] && sleep 15
+                  ;;
+                *)
+                  echo "❌ $commit_sha - Unexpected: $http_status"
+                  break
+                  ;;
+              esac
+
+              request_attempt=$((request_attempt + 1))
+            done
+
+            if [[ "$commit_is_verified" == "true" ]]; then
+              echo "✅ $commit_sha"
+              echo "$commit_sha,$committer_username" >> /tmp/verified_commits.csv
             else
-              echo "❌ Unexpected response"
-              exit 1
+              echo "❌ $commit_sha"
             fi
+          done < /tmp/pending_commits.csv
 
-            attempt=$((attempt + 1))
-          done
-          exit 1
+          total_verified_count=$(wc -l < /tmp/verified_commits.csv | tr -d ' ')
+          echo "Verified: $total_verified_count / $COMMIT_COUNT"
+
+          if [[ $total_verified_count -ne $COMMIT_COUNT ]]; then
+            echo "❌ Not all commits verified by fallback"
+            exit 1
+          fi
+
+          echo "✅ All commits verified"
