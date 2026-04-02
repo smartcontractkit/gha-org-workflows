@@ -43,7 +43,6 @@ jobs:
             if [[ "$res_verified" == "true" ]]; then
               echo "✅ All commits verified"
               exit 0
-              break
             elif [[ "$(echo "$response" | jq '(.unverified_commits // []) | length > 0')" == "true" ]]; then
               # Non-empty unverified_commits: definitive result, do not retry
               echo "❌ Unverified commits:"
