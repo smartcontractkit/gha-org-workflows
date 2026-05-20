@@ -22,4 +22,4 @@ jobs:
             smartcontractkit/chainlink-protos:capabilities-development
             smartcontractkit/cre-sdk-go:capabilities-development
             smartcontractkit/cre-sdk-typescript:capabilities-development
-
+            smartcontractkit/chainlink-aptos:ogt/cherry-pick-aptos-txm-config-types-revert-into-2-47-1
