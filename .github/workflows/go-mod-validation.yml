@@ -22,3 +22,5 @@ jobs:
             smartcontractkit/chainlink-protos:capabilities-development
             smartcontractkit/cre-sdk-go:capabilities-development
             smartcontractkit/cre-sdk-typescript:capabilities-development
+          repo-sha-exceptions: |
+            smartcontractkit/chainlink-aptos:c2a8d09e5b46c1c7815700f645a50caf8a466bda
