@@ -25,3 +25,4 @@ jobs:
           repo-sha-exceptions: |
             smartcontractkit/chainlink-aptos:c2a8d09e5b46c1c7815700f645a50caf8a466bda
             smartcontractkit/chainlink-ccip:87778cfb9fd3ef44f0ff21b237b39b321219987a
+            smartcontractkit/chainlink-ccip:653e567258548f98a2a650399fd56b3190d1000e
